@@ -6,6 +6,7 @@ stages:
   - cache
   - test
   - build
+  - upload-reports
 
 create_cache:
   image: node:18-bullseye
