@@ -120,10 +120,12 @@ upload_reports:
 
 build_image:
   stage: build
-  tags:
-    - shell
-    - ec2
+  image: docker:24
+  services:
+    - docker:24-dind
   before_script:
+    - apk --no-cache add curl python3 py3-pip
+    - pip3 install --no-cache-dir awscli
     - aws ecr get-login-password | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
   script:
     - docker build -t $IMAGE_NAME:$CI_COMMIT_SHA -t $IMAGE_NAME:latest .
