@@ -46,10 +46,6 @@ gitleaks:
   script:
     - gitleaks detect --verbose --source .
   allow_failure: true
-  artifacts:
-    when: always
-    paths:
-      - gitleaks.json
 
 build_image:
   stage: build
