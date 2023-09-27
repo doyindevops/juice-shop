@@ -1,11 +1,17 @@
 variables:
-  IMAGE_NAME: techworldwithnana/demo-app
-  IMAGE_TAG: juice-shop-1.1
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+  AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+  AWS_ACCOUNT_ID: $AWS_ACCOUNT_ID
+  IMAGE_NAME: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/juice-shop
+  SERVER_IP: 35.180.67.168
+  SERVER_USER: ubuntu
 
 stages:
   - cache
   - test
   - build
+  - upload-reports
 
 create_cache:
   image: node:18-bullseye
@@ -114,14 +120,12 @@ upload_reports:
 
 build_image:
   stage: build
-  image: docker:24
-  services:
-    - docker:24-dind
-  variables:
-    DOCKER_PASS: $DOCKER_PASS
-    DOCKER_USER: $DOCKER_USER
+  tags:
+    - shell
+    - ec2
   before_script:
-    - echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+    - aws ecr get-login-password | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
   script:
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker build -t $IMAGE_NAME:$CI_COMMIT_SHA -t $IMAGE_NAME:latest .
+    - docker push $IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $IMAGE_NAME:latest
