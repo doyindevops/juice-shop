@@ -163,21 +163,28 @@ build_image:
 
     - name: Remove conflicting containerd package
       run: |
-        sudo apt-get remove -y containerd
+        echo "Removing conflicting containerd package..."
+        sudo apt-get remove -y containerd || true
+        echo "Containerd package removed."
 
     - name: Install Docker CLI
       run: |
+        echo "Installing Docker CLI..."
         sudo apt-get update
         sudo apt-get install -y docker.io
+        docker --version
+        echo "Docker CLI installed."
 
     - name: Install AWS CLI
       run: |
+        echo "Installing AWS CLI..."
         sudo apt-get update
         sudo apt-get install -y unzip curl jq
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip awscliv2.zip
         sudo ./aws/install --update
         /usr/local/bin/aws --version
+        echo "AWS CLI installed."
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -188,19 +195,25 @@ build_image:
 
     - name: Set up SSH
       run: |
+        echo "Setting up SSH..."
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key
         chmod 400 /tmp/ssh_key
         eval $(ssh-agent -s)
         ssh-add /tmp/ssh_key
         mkdir -p ~/.ssh
         ssh-keyscan ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
+        echo "SSH setup complete."
 
     - name: Authenticate Docker to ECR
       run: |
+        echo "Authenticating Docker to ECR..."
         /usr/local/bin/aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+        echo "Docker authenticated to ECR."
 
     - name: Build and push Docker image
       run: |
+        echo "Building and pushing Docker image..."
         docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
         docker push $IMAGE_NAME:${{ github.sha }}
         docker push $IMAGE_NAME:latest
+        echo "Docker image built and pushed."
