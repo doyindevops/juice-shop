@@ -161,11 +161,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Remove conflicting containerd package
+      - name: Remove conflicting containerd packages
         run: |
-          echo "Removing conflicting containerd package..."
-          sudo apt-get remove -y containerd || true
-          echo "Containerd package removed."
+          echo "Removing conflicting containerd packages..."
+          sudo apt-get remove -y containerd containerd.io || true
+          echo "Conflicting containerd packages removed."
 
       - name: Install Docker CLI
         run: |
