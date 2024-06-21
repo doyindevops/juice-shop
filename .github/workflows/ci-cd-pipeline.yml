@@ -49,14 +49,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Authenticate Docker to ECR
+      - name: Transfer AWS credentials to server
         run: |
-          echo "Authenticating Docker to ECR..."
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
-          echo "Docker authenticated to ECR."
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ubuntu@${{ env.SERVER_IP }}:/home/ubuntu/.aws/credentials
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ubuntu@${{ env.SERVER_IP }}:/home/ubuntu/.aws/config
 
       - name: Deploy Docker image
         run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
