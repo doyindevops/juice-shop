@@ -169,7 +169,7 @@ jobs:
           sudo apt-get install -y unzip curl jq
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
-          sudo ./aws/install --bin-dir /usr/local/bin
+          sudo ./aws/install --update
           /usr/local/bin/aws --version
 
       - name: Set up SSH
@@ -183,7 +183,6 @@ jobs:
 
       - name: Authenticate Docker to ECR
         run: |
-          export $(cat aws_credentials.env | xargs)
           /usr/local/bin/aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
 
       - name: Build and push Docker image
