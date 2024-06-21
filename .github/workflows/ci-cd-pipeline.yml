@@ -1,17 +1,18 @@
 name: CI/CD Pipeline
 
 on:
-  branches:
+  push:
+    branches:
       - main
       - feature/06.03-ecr
-      - 
+
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-  SERVER_IP: 13.39.19.218
+  SERVER_IP: 35.180.67.168
   SERVER_USER: ubuntu
 
 jobs:
@@ -147,6 +148,23 @@ jobs:
         with:
           name: retire-report
           path: retire.json
+
+  upload_reports:
+    runs-on: ubuntu-latest
+    needs: [gitleaks, njsscan, semgrep, retire]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install requests
+        run: pip3 install requests
+
+      - name: Upload reports
+        run: |
+          python3 upload-reports.py gitleaks.json
+          python3 upload-reports.py njsscan.sarif
+          python3 upload-reports.py semgrep.json
+          python3 upload-reports.py retire.json
 
   build_image:
     runs-on: ubuntu-latest
