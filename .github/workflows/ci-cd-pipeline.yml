@@ -186,6 +186,12 @@ jobs:
           /usr/local/bin/aws --version
           echo "AWS CLI installed."
 
+      - name: Debugging Environment Variables
+        run: |
+          echo "AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}"
+          echo "AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          echo "AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -238,4 +244,4 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
           ssh -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
-          ssh -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
