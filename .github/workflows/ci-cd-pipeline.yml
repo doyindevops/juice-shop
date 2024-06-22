@@ -10,7 +10,7 @@ env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-  SERVER_IP: 13.39.19.218
+  SERVER_IP: ${{ secrets.SERVER_IP }}  # Ensure this is stored in GitHub secrets
   SERVER_USER: ubuntu
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Remove conflicting containerd packages
         run: |
-          echo "Removing conflicted containerd packages..."
+          echo "Removing conflicting containerd packages..."
           sudo apt-get remove -y containerd containerd.io || true
           sudo apt-get purge -y containerd containerd.io || true
           echo "Conflicting containerd packages removed."
@@ -55,10 +55,9 @@ jobs:
         run: |
           echo "Setting up SSH..."
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
-
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | sudo tee ~/.ssh/id_rsa > /dev/null
+          sudo chmod 400 ~/.ssh/id_rsa
+          ssh-keyscan ${{ env.SERVER_IP }} | sudo tee -a ~/.ssh/known_hosts > /dev/null
 
       - name: Transfer AWS credentials to server
         run: |
@@ -76,4 +75,4 @@ jobs:
           echo "Stopping and removing existing Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@{{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
