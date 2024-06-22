@@ -10,7 +10,7 @@ env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-  SERVER_IP: ${{ secrets.SERVER_IP }}  # Ensure this is stored in GitHub secrets
+  SERVER_IP: ${{ secrets.SERVER_IP }}
   SERVER_USER: ubuntu
 
 jobs:
@@ -59,6 +59,16 @@ jobs:
           sudo chmod 400 ~/.ssh/id_rsa
           ssh-keyscan ${{ env.SERVER_IP }} | sudo tee -a ~/.ssh/known_hosts > /dev/null
 
+      - name: Create AWS credentials file
+        run: |
+          echo "Creating AWS credentials file..."
+          mkdir -p ~/.aws
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+          echo "[default]" > ~/.aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
@@ -75,4 +85,4 @@ jobs:
           echo "Stopping and removing existing Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@{{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
