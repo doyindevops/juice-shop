@@ -22,7 +22,7 @@ jobs:
 
       - name: Remove conflicting containerd packages
         run: |
-          echo "Removing conflicting containerd packages..."
+          echo "Removing conflicted containerd packages..."
           sudo apt-get remove -y containerd containerd.io || true
           sudo apt-get purge -y containerd containerd.io || true
           echo "Conflicting containerd packages removed."
