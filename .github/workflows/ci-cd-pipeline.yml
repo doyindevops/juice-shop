@@ -181,11 +181,14 @@ jobs:
           echo "Docker image built."
 
       - name: Scan Docker image with Trivy
+        id: trivy-scan
         run: |
           echo "Scanning Docker image with Trivy..."
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL $IMAGE_NAME:latest
-          echo "Docker image scanned with Trivy."
-        continue-on-error: true
+          TRIVY_EXIT_CODE=$?
+          echo "Trivy scan completed with exit code $TRIVY_EXIT_CODE"
+          echo "::set-output name=trivy_exit_code::$TRIVY_EXIT_CODE"
+          exit 0 # Always exit 0 to continue the pipeline
 
       - name: Push Docker image
         run: |
@@ -239,6 +242,17 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
+  report_trivy_exit_code:
+    runs-on: ubuntu-latest
+    needs: deploy_image
+    steps:
+      - name: Check Trivy exit code
+        run: |
+          TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
+          echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
+          exit $TRIVY_EXIT_CODE
+
 
 
 
