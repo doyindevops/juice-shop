@@ -1,17 +1,15 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline with Trivy
 
 on:
   push:
     branches:
       - main
-      - feature/06.03-ecr
+      - feature/*
 
 env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-  SERVER_IP: ${{ secrets.SERVER_IP }}
-  SERVER_USER: ubuntu
 
 jobs:
   test_and_scan:
@@ -81,11 +79,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Remove conflicting containerd packages
-        run: |
-          sudo apt-get remove -y containerd containerd.io || true
-          sudo apt-get purge -y containerd containerd.io || true
-
       - name: Install Docker
         run: |
           sudo apt-get update
@@ -93,24 +86,9 @@ jobs:
           sudo systemctl start docker
           sudo systemctl enable docker
 
-      - name: Install AWS CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip curl jq
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-
       - name: Authenticate Docker to ECR
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ IMAGE_NAME }}
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
@@ -122,8 +100,11 @@ jobs:
         id: trivy-scan
         run: |
           set -o pipefail
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image -f json -o trivy.json --severity HIGH,CRITICAL $IMAGE_NAME:${{ github.sha }}
-          echo "Contents of trivy.json:"
+          echo "Running Trivy scan..."
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image -f json -o trivy.json --severity HIGH,CRITICAL $IMAGE_NAME:${{ github.sha }} 2>&1 | tee trivy.log
+          echo "Contents of trivy.log:"
+          cat trivy.log
+          echo "Contents of trivy.json (if created):"
           cat trivy.json || echo "trivy.json not found"
           echo "Listing current directory after scan:"
           ls -al
