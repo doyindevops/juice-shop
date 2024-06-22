@@ -59,6 +59,7 @@ jobs:
           chmod 400 ~/.ssh/id_rsa
           ssh-keyscan ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
 
+
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
