@@ -195,6 +195,9 @@ jobs:
           name: trivy-report
           path: trivy.json
 
+      - name: List artifacts (Debugging step)
+        run: ls -al
+
       - name: Push Docker image
         run: |
           echo "Pushing Docker image..."
@@ -209,8 +212,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: List uploaded artifacts
+      - name: List artifacts (Debugging step)
         run: ls -al
+
       - name: Download gitleaks report
         uses: actions/download-artifact@v2
         with:
@@ -310,3 +314,4 @@ jobs:
           TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
           echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
           exit $TRIVY_EXIT_CODE
+
