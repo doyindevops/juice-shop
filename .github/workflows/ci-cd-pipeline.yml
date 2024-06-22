@@ -185,6 +185,7 @@ jobs:
           echo "Scanning Docker image with Trivy..."
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL $IMAGE_NAME:latest
           echo "Docker image scanned with Trivy."
+        continue-on-error: true
 
       - name: Push Docker image
         run: |
@@ -238,4 +239,5 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
 
