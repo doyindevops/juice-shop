@@ -12,8 +12,8 @@ elif file_name == 'semgrep.json':
     scan_type = 'Semgrep JSON Report'
 elif file_name == 'retire.json':
     scan_type = 'Retire.js Scan'
-elif file_name == 'trivy.json':
-    scan_type = 'trivy Scan'
+elif file_name == 'snyk_report.json':
+    scan_type = 'Snyk Scan'
 
 
 headers = {
