@@ -208,4 +208,3 @@ jobs:
           TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
           echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
           exit $TRIVY_EXIT_CODE
-
