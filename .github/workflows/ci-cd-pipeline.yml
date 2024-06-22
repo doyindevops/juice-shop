@@ -53,7 +53,7 @@ jobs:
       - name: Upload gitleaks report
         uses: actions/upload-artifact@v2
         with:
-          name: gitleaks.json
+          name: gitleaks-report
           path: gitleaks.json
 
   njsscan:
@@ -73,7 +73,7 @@ jobs:
       - name: Upload njsscan report
         uses: actions/upload-artifact@v2
         with:
-          name: njsscan.sarif
+          name: njsscan-report
           path: njsscan.sarif
 
   semgrep:
@@ -92,7 +92,7 @@ jobs:
       - name: Upload semgrep report
         uses: actions/upload-artifact@v2
         with:
-          name: semgrep.json
+          name: semgrep-report
           path: semgrep.json
 
   retire:
@@ -123,7 +123,7 @@ jobs:
       - name: Upload retire report
         uses: actions/upload-artifact@v2
         with:
-          name: retire.json
+          name: retire-report
           path: retire.json
 
   build_and_scan_image:
@@ -192,7 +192,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: trivy.json
+          name: trivy-report
           path: trivy.json
 
       - name: Push Docker image
@@ -209,34 +209,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: List uploaded artifacts
+        run: ls -al
       - name: Download gitleaks report
         uses: actions/download-artifact@v2
         with:
-          name: gitleaks.json
+          name: gitleaks-report
           path: .
 
       - name: Download njsscan report
         uses: actions/download-artifact@v2
         with:
-          name: njsscan.sarif
+          name: njsscan-report
           path: .
 
       - name: Download semgrep report
         uses: actions/download-artifact@v2
         with:
-          name: semgrep.json
+          name: semgrep-report
           path: .
 
       - name: Download retire report
         uses: actions/download-artifact@v2
         with:
-          name: retire.json
+          name: retire-report
           path: .
 
       - name: Download trivy report
         uses: actions/download-artifact@v2
         with:
-          name: trivy.json
+          name: trivy-report
           path: .
 
       - name: Install Python
