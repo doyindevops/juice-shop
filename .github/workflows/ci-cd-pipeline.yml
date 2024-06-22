@@ -133,6 +133,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Remove conflicting containerd packages
+        run: |
+          echo "Removing conflicting containerd packages..."
+          sudo apt-get remove -y containerd containerd.io || true
+          sudo apt-get purge -y containerd containerd.io || true
+          echo "Conflicting containerd packages removed."
+
       - name: Install Docker
         run: |
           echo "Installing Docker CLI..."
@@ -142,13 +149,6 @@ jobs:
           sudo systemctl enable docker
           docker --version
           echo "Docker CLI installed."
-
-      - name: Remove conflicting containerd packages
-        run: |
-          echo "Removing conflicting containerd packages..."
-          sudo apt-get remove -y containerd containerd.io || true
-          sudo apt-get purge -y containerd containerd.io || true
-          echo "Conflicting containerd packages removed."
 
       - name: Install AWS CLI
         run: |
@@ -216,17 +216,17 @@ jobs:
           echo "Creating AWS credentials file..."
           mkdir -p ~/.aws
           echo "[default]" > ~/.aws/credentials
-          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/..aws/credentials
+          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
           echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/..aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
         run: |
@@ -238,3 +238,4 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
