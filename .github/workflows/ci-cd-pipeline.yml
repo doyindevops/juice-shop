@@ -2,9 +2,8 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - feature/06.03-ecr
+    branches: [feature/06.03-ecr]
+  workflow_dispatch:
 
 env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
