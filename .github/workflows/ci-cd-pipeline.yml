@@ -208,7 +208,7 @@ jobs:
           echo "Setting up SSH..."
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" | sudo tee ~/.ssh/id_rsa > /dev/null
-          sudo chmod 400 ~/.ssh/id_rsa
+          sudo chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ env.SERVER_IP }} | sudo tee -a ~/.ssh/known_hosts > /dev/null
 
       - name: Create AWS credentials file
@@ -238,4 +238,5 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
 
