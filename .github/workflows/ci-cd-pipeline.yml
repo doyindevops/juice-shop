@@ -114,20 +114,20 @@ jobs:
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
 
-      - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Test Docker image with Snyk
+        uses: snyk/actions/docker@master
         with:
-          image-ref: $IMAGE_NAME:latest
-          format: 'json'
-          output: 'trivy.json'
-        continue-on-error: true
+          image: $IMAGE_NAME:${{ github.sha }}
+          args: --file=Dockerfile
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Upload Trivy report
+      - name: Upload Snyk report
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: trivy-report
-          path: trivy.json
+          name: snyk-report
+          path: snyk_report.json
 
       - name: Push Docker image
         run: |
@@ -144,10 +144,10 @@ jobs:
           name: reports
           path: .
 
-      - name: Download Trivy report
+      - name: Download Snyk report
         uses: actions/download-artifact@v2
         with:
-          name: trivy-report
+          name: snyk-report
           path: .
 
       - name: Install Python
@@ -162,7 +162,7 @@ jobs:
           python3 upload-reports.py njsscan.sarif
           python3 upload-reports.py semgrep.json
           python3 upload-reports.py retire.json
-          python3 upload-reports.py trivy.json
+          python3 upload-reports.py snyk_report.json
 
   deploy_image:
     runs-on: ubuntu-latest
@@ -193,7 +193,7 @@ jobs:
       - name: Transfer AWS credentials to server
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
@@ -203,12 +203,12 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
 
-  report_trivy_exit_code:
+  report_snyk_exit_code:
     runs-on: ubuntu-latest
     needs: deploy_image
     steps:
-      - name: Check Trivy exit code
+      - name: Check Snyk exit code
         run: |
-          TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
-          echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
-          exit $TRIVY_EXIT_CODE
+          SNYK_EXIT_CODE=${{ needs.build_and_scan_image.outputs.snyk_exit_code }}
+          echo "Snyk scan exit code: $SNYK_EXIT_CODE"
+          exit $SNYK_EXIT_CODE
