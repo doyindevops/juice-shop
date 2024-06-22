@@ -119,9 +119,14 @@ jobs:
         id: trivy-scan
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image -f json -o trivy.json --severity HIGH,CRITICAL $IMAGE_NAME:${{ github.sha }} || true
+          echo "Contents of trivy.json:"
           cat trivy.json || echo "trivy.json not found"
+          echo "Listing current directory:"
           ls -al
           echo "::set-output name=trivy_exit_code::$?"
+
+      - name: List generated files
+        run: ls -al
 
       - name: Upload Trivy report
         if: always()
