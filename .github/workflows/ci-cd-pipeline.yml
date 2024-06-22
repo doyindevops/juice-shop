@@ -14,11 +14,39 @@ env:
   SERVER_USER: ubuntu
 
 jobs:
-  deploy_image:
-    runs-on: ubuntu-latest
+  build_and_deploy_image:
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Remove conflicting containerd packages
+        run: |
+          echo "Removing conflicting containerd packages..."
+          sudo apt-get remove -y containerd containerd.io || true
+          sudo apt-get purge -y containerd containerd.io || true
+          echo "Conflicting containerd packages removed."
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Authenticate Docker to ECR
+        run: |
+          echo "Authenticating Docker to ECR..."
+          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          echo "Docker authenticated to ECR."
+
+      - name: Build and push Docker image
+        run: |
+          echo "Building and pushing Docker image..."
+          docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
+          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:latest
+          echo "Docker image built and pushed."
 
       - name: Install SSH Client
         run: sudo apt-get update && sudo apt-get install -y openssh-client
@@ -31,35 +59,12 @@ jobs:
           chmod 400 ~/.ssh/id_rsa
           ssh-keyscan ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Install AWS CLI
-        run: |
-          echo "Installing AWS CLI..."
-          sudo apt-get update
-          sudo apt-get install -y unzip curl jq
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-          /usr/local/bin/aws --version
-          echo "AWS CLI installed."
-
-      - name: Configure AWS credentials
-        run: |
-          echo "Configuring AWS credentials..."
-          mkdir -p ~/.aws
-          echo "[default]" > ~/.aws/credentials
-          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
-          echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
-          cat ~/.aws/credentials
-          cat ~/.aws/config
-
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/ubuntu/.aws/credentials
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/ubuntu/.aws/config
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
         run: |
@@ -71,6 +76,4 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
-
-
 
