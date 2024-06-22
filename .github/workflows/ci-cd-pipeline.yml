@@ -50,10 +50,11 @@ jobs:
           args: "detect --verbose --source . -f json -r gitleaks.json"
         continue-on-error: true
 
-      - name: List files in working directory
+      - name: List files after gitleaks
         run: ls -al
 
       - name: Upload gitleaks report
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: gitleaks-report
@@ -73,10 +74,11 @@ jobs:
         run: njsscan --exit-warning . --sarif -o njsscan.sarif
         continue-on-error: true
 
-      - name: List files in working directory
+      - name: List files after njsscan
         run: ls -al
 
       - name: Upload njsscan report
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: njsscan-report
@@ -95,10 +97,11 @@ jobs:
           args: "ci --json --output semgrep.json"
         continue-on-error: true
 
-      - name: List files in working directory
+      - name: List files after semgrep
         run: ls -al
 
       - name: Upload semgrep report
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: semgrep-report
@@ -129,10 +132,11 @@ jobs:
         run: retire --path . --outputformat json --outputpath retire.json
         continue-on-error: true
 
-      - name: List files in working directory
+      - name: List files after retire
         run: ls -al
 
       - name: Upload retire report
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: retire-report
@@ -315,7 +319,7 @@ jobs:
           echo "Stopping and removing existing Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
 
   report_trivy_exit_code:
     runs-on: ubuntu-latest
