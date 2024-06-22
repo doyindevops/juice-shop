@@ -185,10 +185,8 @@ jobs:
         run: |
           echo "Scanning Docker image with Trivy..."
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image -f json -o trivy.json --severity HIGH,CRITICAL --exit-code 1 $IMAGE_NAME:${{ github.sha }}
-          TRIVY_EXIT_CODE=$?
-          echo "Trivy scan completed with exit code $TRIVY_EXIT_CODE"
-          echo "::set-output name=trivy_exit_code::$TRIVY_EXIT_CODE"
-          exit 0 # Always exit 0 to continue the pipeline
+          echo "Trivy scan completed"
+          echo "::set-output name=trivy_exit_code::$?"
 
       - name: Upload Trivy report
         if: always()
@@ -204,9 +202,30 @@ jobs:
           docker push $IMAGE_NAME:latest
           echo "Docker image pushed."
 
-  deploy_image:
+  upload_reports:
     runs-on: ubuntu-latest
     needs: build_and_scan_image
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Python
+        run: sudo apt-get update && sudo apt-get install -y python3 python3-pip
+
+      - name: Install Python dependencies
+        run: pip3 install requests
+
+      - name: Upload reports to DefectDojo
+        run: |
+          python3 upload-reports.py gitleaks.json
+          python3 upload-reports.py njsscan.sarif
+          python3 upload-reports.py semgrep.json
+          python3 upload-reports.py retire.json
+          python3 upload-reports.py trivy.json
+
+  deploy_image:
+    runs-on: ubuntu-latest
+    needs: [build_and_scan_image, upload_reports]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -237,39 +256,27 @@ jobs:
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
         run: |
           echo "Authenticating Docker to ECR on remote server..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
           echo "Pulling Docker image..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
           echo "Stopping and removing existing Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
 
-  upload_reports:
+  report_trivy_exit_code:
     runs-on: ubuntu-latest
-    needs: [build_and_scan_image, deploy_image]
+    needs: deploy_image
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install Python
-        run: sudo apt-get update && sudo apt-get install -y python3 python3-pip
-
-      - name: Install Python dependencies
-        run: pip3 install requests
-
-      - name: Upload reports to DefectDojo
+      - name: Check Trivy exit code
         run: |
-          python3 upload-reports.py gitleaks.json
-          python3 upload-reports.py njsscan.sarif
-          python3 upload-reports.py semgrep.json
-          python3 upload-reports.py retire.json
-          python3 upload-reports.py trivy.json
-
+          TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
+          echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
+          exit $TRIVY_EXIT_CODE
 
 
