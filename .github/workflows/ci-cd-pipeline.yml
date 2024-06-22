@@ -50,6 +50,9 @@ jobs:
           args: "detect --verbose --source . -f json -r gitleaks.json"
         continue-on-error: true
 
+      - name: List files in working directory
+        run: ls -al
+
       - name: Upload gitleaks report
         uses: actions/upload-artifact@v2
         with:
@@ -70,6 +73,9 @@ jobs:
         run: njsscan --exit-warning . --sarif -o njsscan.sarif
         continue-on-error: true
 
+      - name: List files in working directory
+        run: ls -al
+
       - name: Upload njsscan report
         uses: actions/upload-artifact@v2
         with:
@@ -88,6 +94,9 @@ jobs:
         with:
           args: "ci --json --output semgrep.json"
         continue-on-error: true
+
+      - name: List files in working directory
+        run: ls -al
 
       - name: Upload semgrep report
         uses: actions/upload-artifact@v2
@@ -119,6 +128,9 @@ jobs:
       - name: Run retire
         run: retire --path . --outputformat json --outputpath retire.json
         continue-on-error: true
+
+      - name: List files in working directory
+        run: ls -al
 
       - name: Upload retire report
         uses: actions/upload-artifact@v2
@@ -212,7 +224,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: List artifacts (Debugging step)
+      - name: List uploaded artifacts
         run: ls -al
 
       - name: Download gitleaks report
@@ -314,4 +326,3 @@ jobs:
           TRIVY_EXIT_CODE=${{ needs.build_and_scan_image.outputs.trivy_exit_code }}
           echo "Trivy scan exit code: $TRIVY_EXIT_CODE"
           exit $TRIVY_EXIT_CODE
-
