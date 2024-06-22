@@ -134,7 +134,14 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Docker
-        run: sudo apt-get update && sudo apt-get install -y docker.io
+        run: |
+          echo "Installing Docker CLI..."
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          docker --version
+          echo "Docker CLI installed."
 
       - name: Remove conflicting containerd packages
         run: |
@@ -209,17 +216,17 @@ jobs:
           echo "Creating AWS credentials file..."
           mkdir -p ~/.aws
           echo "[default]" > ~/.aws/credentials
-          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/..aws/credentials
+          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/..aws/credentials
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
 
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/..aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
         run: |
