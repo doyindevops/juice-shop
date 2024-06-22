@@ -53,7 +53,7 @@ jobs:
       - name: Upload gitleaks report
         uses: actions/upload-artifact@v2
         with:
-          name: gitleaks-report
+          name: gitleaks.json
           path: gitleaks.json
 
   njsscan:
@@ -73,7 +73,7 @@ jobs:
       - name: Upload njsscan report
         uses: actions/upload-artifact@v2
         with:
-          name: njsscan-report
+          name: njsscan.sarif
           path: njsscan.sarif
 
   semgrep:
@@ -92,7 +92,7 @@ jobs:
       - name: Upload semgrep report
         uses: actions/upload-artifact@v2
         with:
-          name: semgrep-report
+          name: semgrep.json
           path: semgrep.json
 
   retire:
@@ -123,7 +123,7 @@ jobs:
       - name: Upload retire report
         uses: actions/upload-artifact@v2
         with:
-          name: retire-report
+          name: retire.json
           path: retire.json
 
   build_and_scan_image:
@@ -192,7 +192,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v2
         with:
-          name: trivy-report
+          name: trivy.json
           path: trivy.json
 
       - name: Push Docker image
@@ -212,31 +212,31 @@ jobs:
       - name: Download gitleaks report
         uses: actions/download-artifact@v2
         with:
-          name: gitleaks-report
+          name: gitleaks.json
           path: .
 
       - name: Download njsscan report
         uses: actions/download-artifact@v2
         with:
-          name: njsscan-report
+          name: njsscan.sarif
           path: .
 
       - name: Download semgrep report
         uses: actions/download-artifact@v2
         with:
-          name: semgrep-report
+          name: semgrep.json
           path: .
 
       - name: Download retire report
         uses: actions/download-artifact@v2
         with:
-          name: retire-report
+          name: retire.json
           path: .
 
       - name: Download trivy report
         uses: actions/download-artifact@v2
         with:
-          name: trivy-report
+          name: trivy.json
           path: .
 
       - name: Install Python
@@ -279,25 +279,25 @@ jobs:
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
           echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "mkdir -p ~/.aws"
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
-          scp -i ~/..ssh/id_rsa -o StrictHostKeyChecking-no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/credentials
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/home/${{ env.SERVER_USER }}/.aws/config
 
       - name: Deploy Docker image
         run: |
           echo "Authenticating Docker to ECR on remote server..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
           echo "Pulling Docker image..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
           echo "Stopping and removing existing Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
-          ssh -i ~/..ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
 
   report_trivy_exit_code:
     runs-on: ubuntu-latest
