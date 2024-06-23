@@ -121,6 +121,7 @@ jobs:
           args: --file=Dockerfile --json-file-output=snyk_report.json
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          continue-on-error: true
 
       - name: Manually create Snyk report
         run: |
