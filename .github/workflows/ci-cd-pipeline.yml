@@ -30,8 +30,17 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-node-
+      
       - name: Install dependencies
         run: yarn install
+
+      - name: Create placeholder JSON files
+        run: |
+          echo '{}' > gitleaks.json
+          echo '{}' > njsscan.sarif
+          echo '{}' > semgrep.json
+          echo '{}' > retire.json
+          echo '{}' > snyk_report.json
 
       - name: Run tests
         run: yarn test
@@ -115,8 +124,7 @@ jobs:
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
 
       - name: Manually create Snyk report
-        run: |
-          echo '{}' > snyk_report.json
+        run: echo '{}' > snyk_report.json
 
       - name: Test Docker image with Snyk
         uses: snyk/actions/docker@master
@@ -216,8 +224,8 @@ jobs:
       - name: Deploy Docker image
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking-no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
 
   report_snyk_exit_code:
