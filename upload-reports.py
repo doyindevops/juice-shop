@@ -18,7 +18,7 @@ elif file_name == 'snyk_report.json':
 
 
 headers = {
-    'Authorization': 'Token 0577afd54ae9063ac5171804e95b368f7e5dc72c'
+    'Authorization': 'Token 61e8c25a465b910b77af40c6fd9d9e019ccf6b07'
 }
 
 url = 'https://demo.defectdojo.org/api/v2/import-scan/'
