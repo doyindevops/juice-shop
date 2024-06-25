@@ -7,9 +7,9 @@ on:
       - feature/09.04-ssm
 
 env:
-  AWS_DEFAULT_REGION: us-west-2  # Replace with your region
-  AWS_ACCOUNT_ID: 123456789012  # Replace with your account ID
-  IMAGE_NAME: 123456789012.dkr.ecr.us-west-2.amazonaws.com/juice-shop
+  AWS_DEFAULT_REGION: us-west-3  # Replace with your region
+  AWS_ACCOUNT_ID: 589802233850  # Replace with your account ID
+  IMAGE_NAME: 589802233850.dkr.ecr.eu-west-3.amazonaws.com/juice-shop
 
 jobs:
   build_and_scan_image:
