@@ -7,9 +7,9 @@ on:
       - feature/09.04-ssm
 
 env:
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
+  AWS_DEFAULT_REGION: us-west-2  # Replace with your region
+  AWS_ACCOUNT_ID: 123456789012  # Replace with your account ID
+  IMAGE_NAME: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
 
 jobs:
   build_and_scan_image:
@@ -40,8 +40,7 @@ jobs:
 
       - name: Authenticate Docker to ECR
         run: |
-          aws configure set region ${{ secrets.AWS_DEFAULT_REGION }}
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
@@ -72,7 +71,7 @@ jobs:
 
       - name: Deploy image using AWS SSM
         run: |
-          LOG_IN_CMD="export AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}; aws ecr get-login-password | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
+          LOG_IN_CMD="export AWS_DEFAULT_REGION=${{ env.AWS_DEFAULT_REGION }}; aws ecr get-login-password | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_DEFAULT_REGION }}.amazonaws.com"
           COMMANDS_TO_EXECUTE="docker pull $IMAGE_NAME:latest && (docker stop juice-shop || true) && (docker rm juice-shop || true) && docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest; echo HelloWorld"
           
           # Properly quote the commands to ensure they are interpreted correctly
