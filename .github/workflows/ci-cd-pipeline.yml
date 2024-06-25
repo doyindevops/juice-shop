@@ -32,50 +32,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Deploy image and get command output
+      - name: Deploy image using AWS SSM
         run: |
           FULL_COMMAND="export AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}; aws ecr get-login-password | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com; docker pull $IMAGE_NAME:latest && (docker stop juice-shop || true) && (docker rm juice-shop || true) && docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
           
-          # Run the full deployment command
-          DEPLOY_COMMAND_ID=$(aws ssm send-command \
+          COMMAND_ID=$(aws ssm send-command \
             --instance-ids "i-0e8a8b5490aa5a8de" \
             --document-name "AWS-RunShellScript" \
             --parameters commands=["${FULL_COMMAND}"] \
             --query "Command.CommandId" \
             --output text)
-            
-          echo "Deploy Command ID: $DEPLOY_COMMAND_ID"
           
-          # Wait for the deployment command to complete
-          aws ssm wait command-executed --command-id "$DEPLOY_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" || true
-          
-          # Retrieve and print the output of the deployment command
-          DEPLOY_STATUS=$(aws ssm get-command-invocation --command-id "$DEPLOY_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" --query "Status" --output text)
-          DEPLOY_STDOUT=$(aws ssm get-command-invocation --command-id "$DEPLOY_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" --query "StandardOutputContent" --output text)
-          DEPLOY_STDERR=$(aws ssm get-command-invocation --command-id "$DEPLOY_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" --query "StandardErrorContent" --output text)
-          
-          echo "Deploy Status: $DEPLOY_STATUS"
-          echo "Deploy Output: $DEPLOY_STDOUT"
-          echo "Deploy Errors: $DEPLOY_STDERR"
-          
-          # Run the HelloWorld command if the deployment was successful
-          if [ "$DEPLOY_STATUS" == "Success" ]; then
-            HELLO_COMMAND_ID=$(aws ssm send-command \
-              --instance-ids "i-0e8a8b5490aa5a8de" \
-              --document-name "AWS-RunShellScript" \
-              --parameters commands=['echo HelloWorld'] \
-              --query "Command.CommandId" \
-              --output text)
-            
-            echo "HelloWorld Command ID: $HELLO_COMMAND_ID"
-            
-            # Wait for the HelloWorld command to complete
-            aws ssm wait command-executed --command-id "$HELLO_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" || true
-            
-            # Retrieve and print the output of the HelloWorld command
-            HELLO_OUTPUT=$(aws ssm get-command-invocation --command-id "$HELLO_COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" --query "StandardOutputContent" --output text)
-            echo "HelloWorld Output: $HELLO_OUTPUT"
-          else
-            echo "Deployment failed. Skipping HelloWorld command."
-            exit 1
-          fi
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de"
