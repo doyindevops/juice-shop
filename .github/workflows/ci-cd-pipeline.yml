@@ -44,12 +44,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Docker
+      - name: Remove conflicting containerd packages
         run: |
+          sudo apt-get remove -y containerd containerd.io || true
+          sudo apt-get purge -y containerd containerd.io || true
           sudo apt-get update
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
-          sudo systemctl enable docker
+          sudo apt-get install -y --no-install-recommends docker.io
 
       - name: Install AWS CLI
         run: |
