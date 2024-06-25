@@ -59,9 +59,13 @@ jobs:
           unzip awscliv2.zip
           sudo ./aws/install --update
 
+      - name: Verify IAM Role Access
+        run: |
+          aws sts get-caller-identity
+
       - name: Authenticate Docker to ECR
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ env.IMAGE_NAME }}
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
@@ -92,7 +96,7 @@ jobs:
 
       - name: Deploy image using AWS SSM
         run: |
-          LOG_IN_CMD="aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
+          LOG_IN_CMD="aws ecr get-login-password --region ${{ env.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ env.IMAGE_NAME }}"
           COMMANDS_TO_EXECUTE="docker pull $IMAGE_NAME:latest && (docker stop juice-shop || true) && (docker rm juice-shop || true) && docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
           
           COMMAND_ID=$(aws ssm send-command \
