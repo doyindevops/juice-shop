@@ -7,21 +7,42 @@ on:
       - feature/09.04-ssm
 
 env:
-  AWS_DEFAULT_REGION: us-west-3  # Replace with your region
-  AWS_ACCOUNT_ID: 589802233850  # Replace with your account ID
-  IMAGE_NAME: 589802233850.dkr.ecr.us-west-3.amazonaws.com/juice-shop
+  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
 
 jobs:
-  build_and_scan_image:
+  create_cache:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Remove conflicting containerd packages
-        run: |
-          sudo apt-get remove -y containerd containerd.io || true
-          sudo apt-get purge -y containerd containerd.io || true
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            node_modules
+            yarn.lock
+            .yarn
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+  build_image:
+    runs-on: ubuntu-latest
+    needs: create_cache
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       - name: Install Docker
         run: |
@@ -40,7 +61,7 @@ jobs:
 
       - name: Authenticate Docker to ECR
         run: |
-          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
@@ -57,7 +78,7 @@ jobs:
 
   deploy_image:
     runs-on: ubuntu-latest
-    needs: build_and_scan_image
+    needs: build_image
     container:
       image: amazon/aws-cli:latest
     steps:
@@ -71,10 +92,9 @@ jobs:
 
       - name: Deploy image using AWS SSM
         run: |
-          LOG_IN_CMD="aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
-          COMMANDS_TO_EXECUTE="docker pull $IMAGE_NAME:latest && (docker stop juice-shop || true) && (docker rm juice-shop || true) && docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest; echo HelloWorld"
+          LOG_IN_CMD="aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
+          COMMANDS_TO_EXECUTE="docker pull $IMAGE_NAME:latest && (docker stop juice-shop || true) && (docker rm juice-shop || true) && docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
           
-          # Properly quote the commands to ensure they are interpreted correctly
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "i-0e8a8b5490aa5a8de" \
             --document-name "AWS-RunShellScript" \
