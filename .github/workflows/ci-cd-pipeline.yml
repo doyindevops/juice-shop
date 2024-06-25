@@ -17,10 +17,10 @@ jobs:
     container:
       image: amazon/aws-cli:latest
     steps:
-      - name: Install tar utility
+      - name: Install tar and gzip utilities
         run: |
           yum update -y
-          yum install -y tar
+          yum install -y tar gzip
 
       - name: Checkout code
         uses: actions/checkout@v2
