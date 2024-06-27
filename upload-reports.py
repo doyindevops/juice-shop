@@ -19,7 +19,7 @@ else:
     sys.exit(1)
 
 headers = {
-    'Authorization': 'Token YOUR_DEFECTDOJO_API_TOKEN'  # Replace with your actual token or use environment variable
+    'Authorization': 'Token a8b6895f0066f4d0a9be65a7db0a3a83a78575fe'  # Replace with your actual token or use environment variable
 }
 
 url = 'https://demo.defectdojo.org/api/v2/import-scan/'
