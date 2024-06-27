@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feature/09.04-ssm
+      - feature/09.08-dast
 
 env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
