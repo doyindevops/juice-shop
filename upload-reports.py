@@ -17,7 +17,7 @@ elif file_name == 'trivy.json':
 
 
 headers = {
-    'Authorization': 'Token e4184080f5a60a85372ef090f8f6d3d5a6ad72e8'
+    'Authorization': 'Token a8b6895f0066f4d0a9be65a7db0a3a83a78575fe'
 }
 
 url = 'https://demo.defectdojo.org/api/v2/import-scan/'
