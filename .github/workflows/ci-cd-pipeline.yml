@@ -13,7 +13,10 @@ env:
 
 jobs:
   create_cache:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [self-hosted, ubuntu-latest, actions-runner]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -38,8 +41,11 @@ jobs:
             ${{ runner.os }}-node-
 
   build_image:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: create_cache
+    strategy:
+      matrix:
+        runner: [self-hosted, ubuntu-latest, actions-runner]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -81,8 +87,11 @@ jobs:
           sudo apt-get clean
 
   deploy_image:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: build_image
+    strategy:
+      matrix:
+        runner: [self-hosted, ubuntu-latest, actions-runner]
     container:
       image: amazon/aws-cli:latest
     steps:
@@ -114,4 +123,3 @@ jobs:
           # Retrieve and print the detailed output of the command
           aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "i-0e8a8b5490aa5a8de" --query '{CommandId:CommandId, InstanceId:InstanceId, Status:Status, ExecutionStartDateTime:ExecutionStartDateTime, ExecutionEndDateTime:ExecutionEndDateTime, StandardOutputContent:StandardOutputContent, StandardErrorContent:StandardErrorContent}' --output json
 
-          
