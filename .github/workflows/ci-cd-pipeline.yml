@@ -26,6 +26,7 @@ jobs:
           sudo apt-get remove -y containerd containerd.io || true
           sudo apt-get purge -y containerd containerd.io || true
           echo "Conflicting containerd packages removed."
+
       - name: Install Docker
         run: |
           echo "Installing Docker CLI..."
@@ -35,6 +36,7 @@ jobs:
           sudo systemctl enable docker
           docker --version
           echo "Docker CLI installed."
+
       - name: Install AWS CLI
         run: |
           echo "Installing AWS CLI..."
@@ -45,6 +47,7 @@ jobs:
           sudo ./aws/install --update
           /usr/local/bin/aws --version
           echo "AWS CLI installed."
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -57,11 +60,13 @@ jobs:
           echo "Authenticating Docker to ECR..."
           aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
           echo "Docker authenticated to ECR."
+
       - name: Build Docker image
         run: |
           echo "Building Docker image..."
           docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
           echo "Docker image built."
+
       - name: Scan Docker image with Trivy
         run: |
           echo "Scanning Docker image with Trivy..."
@@ -93,6 +98,7 @@ jobs:
           echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
       - name: Create AWS credentials file
         run: |
           echo "Creating AWS credentials file..."
@@ -101,13 +107,15 @@ jobs:
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
           echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
+
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "mkdir -p ~/.aws"
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/credentials
           scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/config
+
       - name: Deploy Docker image to Test
         run: |
           echo "Authenticating Docker to ECR on remote server..."
@@ -127,6 +135,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://35.180.67.168:3000'
+
       - name: Upload ZAP Baseline Report
         uses: actions/upload-artifact@v2
         with:
@@ -150,18 +159,20 @@ jobs:
           echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
       - name: Create AWS credentials file
         run: |
           echo "Creating AWS credentials file..."
           mkdir -p ~/.aws
           echo "[default]" > ~/.aws/credentials
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/..aws/credentials
-          echo "[default]" > ~/.aws/config
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+          echo "[default]" > ~/..aws/config
           echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+
       - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "mkdir -p ~/.aws"
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ubuntu@${{ secrets.SERVER_IP }}Here is the updated workflow using the ZAP Baseline Scan GitHub Action, which avoids direct interaction with Docker images:
-
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/credentials
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/config
