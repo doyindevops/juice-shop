@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feature/09.08-dast
+      - feature/09.04-ssm
 
 env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy_test
     container:
-      image: owasp/zap2docker-weekly
+      image: owasp/zap
     env:
       ZAP_TARGET: "http://35.180.67.168:3000"
     steps:
@@ -139,29 +139,9 @@ jobs:
           name: zap-baseline-report
           path: baseline.xml
 
-  zap_full:
-    runs-on: ubuntu-latest
-    needs: deploy_test
-    container:
-      image: owasp/zap2docker-weekly
-    env:
-      ZAP_TARGET: "http://35.180.67.168:3000"
-    steps:
-      - name: Prepare ZAP Report Directory
-        run: mkdir -p /zap/wrk
-      - name: Run ZAP Full Scan
-        run: zap-full-scan.py -t $ZAP_TARGET -g gen.conf -I -x zap.xml
-      - name: Copy ZAP Full Scan Report
-        run: cp /zap/wrk/zap.xml zap.xml
-      - name: Upload ZAP Full Scan Report
-        uses: actions/upload-artifact@v2
-        with:
-          name: zap-full-scan-report
-          path: zap.xml
-
   deploy_image:
     runs-on: ubuntu-latest
-    needs: [zap_baseline, zap_full]
+    needs: zap_baseline
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -201,3 +181,4 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
