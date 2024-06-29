@@ -118,6 +118,8 @@ jobs:
           echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          echo "SSH setup complete."
+        shell: bash
 
       - name: Create AWS credentials file
         run: |
@@ -129,7 +131,7 @@ jobs:
           echo "[default]" > ~/.aws/config
           echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
-      - name: Transfer AWS credential to server
+      - name: Transfer AWS credentials to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "mkdir -p ~/.aws"
@@ -147,4 +149,3 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
-
