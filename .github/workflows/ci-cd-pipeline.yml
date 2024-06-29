@@ -116,8 +116,20 @@ jobs:
           echo "Setting up SSH..."
           mkdir -p ~/.ssh
           echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
+          if [ $? -ne 0 ]; then
+            echo "Failed to decode and write the SSH private key."
+            exit 1
+          fi
           chmod 600 ~/.ssh/id_rsa
+          if [ $? -ne 0 ]; then
+            echo "Failed to set permissions for the SSH private key."
+            exit 1
+          fi
           ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          if [ $? -ne 0 ]; then
+            echo "Failed to add the server to known_hosts."
+            exit 1
+          fi
           echo "SSH setup complete."
         shell: bash
 
@@ -129,7 +141,7 @@ jobs:
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
           echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
 
       - name: Transfer AWS credentials to server
         run: |
