@@ -129,7 +129,7 @@ jobs:
           echo "[default]" > ~/.aws/config
           echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
-      - name: Transfer AWS credentials to server
+      - name: Transfer AWS credential to server
         run: |
           echo "Transferring AWS credentials to server..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "mkdir -p ~/.aws"
