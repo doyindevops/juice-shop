@@ -115,23 +115,43 @@ jobs:
         run: |
           echo "Setting up SSH..."
           mkdir -p ~/.ssh
+          echo "SSH directory created."
+
+          echo "Decoding SSH private key..."
           echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
-          if [ $? -ne 0 ]; then
-            echo "Failed to decode and write the SSH private key."
+          decode_status=$?
+          if [ $decode_status -ne 0 ]; then
+            echo "Failed to decode and write the SSH private key. Exit code: $decode_status"
             exit 1
           fi
+          echo "SSH private key decoded and written."
+
+          echo "Setting permissions for SSH private key..."
           chmod 600 ~/.ssh/id_rsa
-          if [ $? -ne 0 ]; then
-            echo "Failed to set permissions for the SSH private key."
+          chmod_status=$?
+          if [ $chmod_status -ne 0 ]; then
+            echo "Failed to set permissions for the SSH private key. Exit code: $chmod_status"
             exit 1
           fi
-          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          if [ $? -ne 0 ]; then
-            echo "Failed to add the server to known_hosts."
+          echo "Permissions set for SSH private key."
+
+          echo "Adding server to known_hosts..."
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh_keyscan_status=$?
+          if [ $ssh_keyscan_status -ne 0 ]; then
+            echo "Failed to add the server to known_hosts. Exit code: $ssh_keyscan_status"
             exit 1
           fi
+          echo "Server added to known_hosts."
+
           echo "SSH setup complete."
-        shell: bash
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+        env:
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ubuntu
 
       - name: Create AWS credentials file
         run: |
@@ -141,7 +161,7 @@ jobs:
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
           echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
           echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/..aws/config
+          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
       - name: Transfer AWS credentials to server
         run: |
@@ -161,3 +181,4 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
           echo "Running new Docker container..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
+
