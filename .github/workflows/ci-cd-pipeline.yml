@@ -15,7 +15,7 @@ env:
 
 jobs:
   build_and_scan_image:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Use self-hosted runner
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -102,7 +102,7 @@ jobs:
           echo "Docker image pushed."
 
   deploy_test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Use self-hosted runner
     needs: build_and_scan_image
     steps:
       - name: Checkout code
@@ -159,7 +159,7 @@ jobs:
           mkdir -p ~/.aws
           echo "[default]" > ~/.aws/credentials
           echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/..aws/credentials
           echo "[default]" > ~/.aws/config
           echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
 
