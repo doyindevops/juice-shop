@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI Testing Pipeline
 
 on:
   push:
@@ -6,179 +6,26 @@ on:
       - main
       - feature/09.08-dast
 
-env:
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-  SERVER_IP: ${{ secrets.SERVER_IP }}
-  SERVER_USER: ubuntu
-
 jobs:
-  build_and_scan_image:
-    runs-on: self-hosted  # Use self-hosted runner
+  ci_test:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Remove conflicting containerd packages
-        run: |
-          echo "Removing conflicting containerd packages..."
-          sudo apt-get remove -y containerd containerd.io || true
-          sudo apt-get purge -y containerd containerd.io || true
-          echo "Conflicting containerd packages removed."
-
-      - name: Install Docker
-        run: |
-          echo "Installing Docker CLI..."
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
-          sudo systemctl enable docker
-          docker --version
-          echo "Docker CLI installed."
-
-      - name: Install AWS CLI
-        run: |
-          echo "Installing AWS CLI..."
-          sudo apt-get update
-          sudo apt-get install -y unzip curl jq
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-          /usr/local/bin/aws --version
-          echo "AWS CLI installed."
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          python-version: 3.8
 
-      - name: Authenticate Docker to ECR
+      - name: Install dependencies
         run: |
-          echo "Authenticating Docker to ECR..."
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
-          echo "Docker authenticated to ECR."
+          make install
 
-      - name: Build Docker image
+      - name: Lint with pylint
         run: |
-          echo "Building Docker image..."
-          docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
-          echo "Docker image built."
+          make lint
 
-      - name: Scan Docker image with Trivy
+      - name: Test with pytest
         run: |
-          echo "Scanning Docker image with Trivy..."
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL $IMAGE_NAME:latest
-          echo "Docker image scanned with Trivy."
-        continue-on-error: true
-
-      - name: ZAP Scan
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: 'https://www.zaproxy.org'
-          token: ${{ secrets.TOKEN }}
-          docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
-          issue_title: 'ZAP Scan Baseline Report'
-          fail_action: false
-          allow_issue_writing: true
-          artifact_name: zap_scan
-        env:
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          SERVER_USER: ubuntu
-          AWS_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Push Docker image
-        run: |
-          echo "Pushing Docker image..."
-          docker push $IMAGE_NAME:${{ github.sha }}
-          docker push $IMAGE_NAME:latest
-          echo "Docker image pushed."
-
-  deploy_test:
-    runs-on: self-hosted  # Use self-hosted runner
-    needs: build_and_scan_image
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install SSH Client
-        run: sudo apt-get update && sudo apt-get install -y openssh-client
-
-      - name: Set up SSH
-        run: |
-          echo "Setting up SSH..."
-          mkdir -p ~/.ssh
-          echo "SSH directory created."
-
-          echo "Decoding SSH private key..."
-          echo "${{ secrets.APP_SERVER_SSH }}" | base64 --decode > ~/.ssh/id_rsa
-          decode_status=$?
-          if [ $decode_status -ne 0 ]; then
-            echo "Failed to decode and write the SSH private key. Exit code: $decode_status"
-            exit 1
-          fi
-          echo "SSH private key decoded and written."
-
-          echo "Setting permissions for SSH private key..."
-          chmod 600 ~/.ssh/id_rsa
-          chmod_status=$?
-          if [ $chmod_status -ne 0 ]; then
-            echo "Failed to set permissions for the SSH private key. Exit code: $chmod_status"
-            exit 1
-          fi
-          echo "Permissions set for SSH private key."
-
-          echo "Adding server to known_hosts..."
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          ssh_keyscan_status=$?
-          if [ $ssh_keyscan_status -ne 0 ]; then
-            echo "Failed to add the server to known_hosts. Exit code: $ssh_keyscan_status"
-            exit 1
-          fi
-          echo "Server added to known_hosts."
-
-          echo "SSH setup complete."
-        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
-        env:
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/juice-shop
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          SERVER_USER: ubuntu
-
-      - name: Create AWS credentials file
-        run: |
-          echo "Creating AWS credentials file..."
-          mkdir -p ~/.aws
-          echo "[default]" > ~/.aws/credentials
-          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
-          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/..aws/credentials
-          echo "[default]" > ~/.aws/config
-          echo "region=${{ secrets.AWS_DEFAULT_REGION }}" >> ~/.aws/config
-
-      - name: Transfer AWS credentials to server
-        run: |
-          echo "Transferring AWS credentials to server..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "mkdir -p ~/.aws"
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/credentials ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/credentials
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ~/.aws/config ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/.aws/config
-
-      - name: Deploy Docker image
-        if: ${{ github.event.inputs.deploy }} == 'true'
-        run: |
-          echo "Authenticating Docker to ECR on remote server..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com"
-          echo "Pulling Docker image..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker pull $IMAGE_NAME:latest"
-          echo "Stopping and removing existing Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker stop juice-shop || true && docker rm juice-shop || true"
-          echo "Running new Docker container..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_IP }} "docker run -d --name juice-shop -p 3000:3000 $IMAGE_NAME:latest"
-
+          make test
